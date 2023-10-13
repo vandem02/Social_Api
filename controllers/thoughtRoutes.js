@@ -12,10 +12,10 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const thought = await Thought.findOne({ _id: req.params.thoughtId });
+    const thought = await Thought.findById(req.params.id);
 
     if (!thought) {
-      return res.status(404).json({ message: "No thought with that ID" });
+      return res.status(404).json({ message: "No thought exists with that ID." });
     }
 
     res.json(thought);
@@ -26,16 +26,20 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const thought = await Thought.create(req.body);
-    const user = await User.findOneAndUpdate({ _id: req.body.userId }, { $addToSet: { thoughts: thought._id } }, { new: true });
+    let user = User.findById(req.body.userId);
 
     if (!user) {
-      return res.status(404).json({
-        message: "Thought created, but found no user with that ID",
-      });
+      return res.status(404).json({ message: "No user exists with that ID." });
     }
 
-    res.json("Created the thought 🎉");
+    const thought = await Thought.create(req.body);
+    user = await User.findOneAndUpdate(
+      { _id: req.body.userId },
+      { $addToSet: { thoughts: thought._id } },
+      { new: true }
+    );
+
+    res.status(201).json("Thought created.");
   } catch (err) {
     console.log(err);
     res.status(500).json(err);
@@ -45,13 +49,13 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const thought = await Thought.findOneAndUpdate(
-      { _id: req.params.thoughtId },
+      { _id: req.params.id },
       { $set: req.body },
       { runValidators: true, new: true }
     );
 
     if (!thought) {
-      return res.status(404).json({ message: "No thought with this id!" });
+      return res.status(404).json({ message: "No thought exists with that ID." });
     }
 
     res.json(thought);
@@ -63,24 +67,62 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const thought = await Thought.findOneAndRemove({ _id: req.params.thoughtId });
+    const thought = await Thought.findByIdAndDelete(req.params.id);
 
     if (!thought) {
-      return res.status(404).json({ message: "No thought with this id!" });
+      return res.status(404).json({ message: "No thought exists with that ID." });
     }
 
-    const user = await User.findOneAndUpdate({ thoughts: req.params.thoughtId }, { $pull: { thoughts: req.params.thoughtId } }, { new: true });
+    const user = await User.findOneAndUpdate(
+      { thoughts: req.params.id },
+      { $pull: { thoughts: req.params.id } },
+      { new: true }
+    );
 
     if (!user) {
-      return res.status(404).json({
-        message: "Thought created but no user with this id!",
-      });
+      return res.status(404).json({ message: "No user exists with that ID." })
     }
 
-    res.json({ message: "Thought successfully deleted!" });
+    res.json({ message: "Thought deleted." });
   } catch (err) {
     res.status(500).json(err);
   }
 });
 
-module.exports = router
+router.post("/:id/reactions", async (req, res) => {
+  try {
+    const thought = await Thought.findOneAndUpdate(
+      { _id: req.params.id },
+      { $addToSet: { reactions: req.body } },
+      { runValidators: true, new: true }
+    );
+
+    if (!thought) {
+      return res.status(404).json({ message: 'No thought exists with that ID.' });
+    }
+
+    res.json(thought);
+  } catch (err) {
+    res.status(500).json(err);
+  }
+})
+
+router.delete("/:id/reactions/:reactionId", async (req, res) => {
+  try {
+    const thought = await Thought.findOneAndUpdate(
+      { _id: req.params.id },
+      { $pull: { reactions: { _id: req.params.reactionId } } },
+      { runValidators: true, new: true }
+    );
+
+    if (!thought) {
+      return res.status(404).json({ message: 'No thought exists with that ID.' });
+    }
+
+    res.json(thought);
+  } catch (err) {
+    res.status(500).json(err);
+  }
+})
+
+module.exports = router;

@@ -10,7 +10,7 @@ router.post("/:id", async (req, res) => {
     );
 
     if (!thought) {
-      return res.status(404).json({ message: 'No thought with this id!' });
+      return res.status(404).json({ message: 'No thought exists with this ID.' });
     }
 
     res.json(thought);
